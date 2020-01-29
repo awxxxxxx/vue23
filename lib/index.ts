@@ -4,6 +4,7 @@ import generate from '@babel/generator';
 
 import { transformJS } from './transformers/js';
 import { sfcToFile } from './codegen';
+import { logger } from './utils/log';
 
 const file  = `
 <template>
@@ -13,11 +14,11 @@ const file  = `
 <script>
 export default {
 data () {
-  var a = {
-    dlsl,
+  var a =  {
+    dlsl: 3,
   }
   var b = a;
-  return b;
+  return {};
 }
 }
 </script>
@@ -35,5 +36,6 @@ if (source.script) {
   let ast  = parser.parse(source.script.content, { sourceType: 'module'});
   transformJS(ast);
   source.script.content = generate(ast).code;
+  logger.info(source.script.content)
   sfcToFile(source, './source.vue')
 }

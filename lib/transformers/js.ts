@@ -2,7 +2,7 @@ import traverse, { NodePath } from "@babel/traverse";
 import * as t from '@babel/types';
 
 import { File } from "@babel/types";
-import { KeyWords } from "./symbol";
+import { KeyWords, Vue23HooksMap } from "./symbol";
 
 const defaultImportOptions = {
   reactive: false,
@@ -51,8 +51,10 @@ function importDependencies(path: NodePath<t.Program>, options: ImportOptions) {
   if (options.ref) {
     specifiers.push(ImportDependencies[KeyWords.Ref])
   }
-  const i = t.importDeclaration(specifiers, Literals[KeyWords.Vue]);
-  path.node.body.unshift(i);
+  if (specifiers.length) {
+    const i = t.importDeclaration(specifiers, Literals[KeyWords.Vue]);
+    path.node.body.unshift(i);
+  }
 }
 
 export function transformJS(ast: File) {
@@ -62,6 +64,16 @@ export function transformJS(ast: File) {
       if (path.isProgram()) {
         importDependencies(path, options);
         options = defaultImportOptions;
+      }
+    },
+    ObjectMethod(path) {
+      if (Vue23HooksMap[path.node.key.name]) {
+        path.node.key.name = Vue23HooksMap[path.node.key.name]
+      }
+    },
+    ObjectProperty(path) {
+      if (Vue23HooksMap[path.node.key.name] && t.isFunctionExpression(path.node.value)) {
+        path.node.key.name = Vue23HooksMap[path.node.key.name]
       }
     },
     ReturnStatement(path) {
