@@ -1,7 +1,8 @@
 import traverse, { NodePath } from "@babel/traverse";
 import * as t from '@babel/types';
-
 import { File } from "@babel/types";
+
+import { resolveTopIdentifier, isDeprectedHook } from './utils'
 import { KeyWords, Vue23HooksMap } from "./symbol";
 
 const defaultImportOptions = {
@@ -25,20 +26,13 @@ const ImportDependencies = {
   [KeyWords.Ref]: t.importSpecifier(Identifiers[KeyWords.Ref], Identifiers[KeyWords.Ref]),
 }
 
-function resolveTopIdentifier(name: any, node: NodePath) {
-  let n = node.scope.getBinding(name);
-  while(n?.path.isVariableDeclarator()) {
-    if (t.isIdentifier(n.path.node.init)) {
-      n = node.scope.getBinding(n.path.node.init.name);
-    } else {
-      return n.path;
-    }
-  }
-  return n?.path;
-}
 
 function wrapWithReactive(args: t.CallExpression['arguments']) {
   return t.callExpression(Identifiers[KeyWords.Reative], args);
+}
+
+function renameScopeVariable<T>(path: NodePath<T>, name: string) {
+  path.scope.rename(name);
 }
 
 function importDependencies(path: NodePath<t.Program>, options: ImportOptions) {
@@ -47,9 +41,11 @@ function importDependencies(path: NodePath<t.Program>, options: ImportOptions) {
   // import 'reactive'
   if (options.reactive) {
     specifiers.push(ImportDependencies[KeyWords.Reative]);
+    renameScopeVariable(path, KeyWords.Reative);
   }
   if (options.ref) {
     specifiers.push(ImportDependencies[KeyWords.Ref])
+    renameScopeVariable(path, KeyWords.Reative);
   }
   if (specifiers.length) {
     const i = t.importDeclaration(specifiers, Literals[KeyWords.Vue]);
@@ -67,11 +63,17 @@ export function transformJS(ast: File) {
       }
     },
     ObjectMethod(path) {
+      if (isDeprectedHook(path)) {
+        return path.remove();
+      }
       if (Vue23HooksMap[path.node.key.name]) {
         path.node.key.name = Vue23HooksMap[path.node.key.name]
       }
     },
     ObjectProperty(path) {
+      if (isDeprectedHook(path)) {
+        return path.remove();
+      }
       if (Vue23HooksMap[path.node.key.name] && t.isFunctionExpression(path.node.value)) {
         path.node.key.name = Vue23HooksMap[path.node.key.name]
       }
@@ -97,9 +99,19 @@ export function transformJS(ast: File) {
             options.reactive = true;
           } else if (path.node.argument) {
             const call = wrapWithReactive([path.node.argument])
-            const re = t.returnStatement(call);
-            path.replaceWith(re);
+            const nstateIdentifier = t.identifier('state');
+            if (path.scope.hasOwnBinding('state')) {
+              path.scope.rename('state')
+            }
+            let re;
+            if (t.isBlockStatement(path.parentPath.node)) {
+              path.scope.push({ id: nstateIdentifier, init: call, kind: 'const' })
+              re = t.returnStatement(nstateIdentifier);
+            } else {
+              re = t.returnStatement(call);
+            }
             options.reactive = true;
+            path.replaceWith(re);
           }
         }
       }

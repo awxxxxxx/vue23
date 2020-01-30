@@ -2,6 +2,7 @@ import * as parser from '@babel/parser';
 import generate from '@babel/generator';
 
 import { transformJS } from '../lib/transformers/js';
+import { Hooks } from '../lib/transformers/symbol';
 
 function transform(input: string) {
   const ast = parser.parse(input, { sourceType: 'module'})
@@ -20,7 +21,8 @@ test('rename data method to setup', () => {
   const expected =`import { reactive } from "vue";
 export default {
   setup() {
-    return reactive({});
+    const state = reactive({});
+    return state;
   }
 
 };`
@@ -49,33 +51,117 @@ export default {
   expect(transform(input)).toBe(expected);
 })
 
-test('change lifecycle hooks', () => {
-  const input = `
+describe('Change lifecycle hooks', () => {
+  const tests = [
+    {
+      name: 'Remove beforeCreate',
+      input: `
+        export default {
+          beforeCreate() {},
+        }
+      `,
+      expected: `export default {};`
+    },
+    {
+      name: 'Remove created',
+      input: `
+        export default {
+          created() {},
+        }
+      `,
+      expected: `export default {};`
+    },
+    {
+      name: `Rename beforeMount to ${Hooks.OnBeforeMount}`,
+      input: `
+        export default {
+          beforeMount() {},
+        }
+      `,
+      expected: `export default {
+  onBeforeMount() {}
+
+};`
+    },
+    {
+      name: `Rename mounted to ${Hooks.OnMounted}`,
+      input: `
+        export default {
+          mounted() {},
+        }
+      `,
+      expected: `export default {
+  onMounted() {}
+
+};`
+    },
+    {
+      name: `Rename beforeUpdate to ${Hooks.OnBeforeUpdate}`,
+      input: `
+        export default {
+          beforeUpdate() {},
+        }
+      `,
+      expected: `export default {
+  onBeforeUpdate() {}
+
+};`
+    },
+    {
+      name: `Rename updated to ${Hooks.OnUpdated}`,
+      input: `
+        export default {
+          updated() {},
+        }
+      `,
+      expected: `export default {
+  onUpdated() {}
+
+};`
+    },
+    {
+      name: `Rename beforeDestroy to ${Hooks.OnBeforeUnmount}`,
+      input: `
+        export default {
+          beforeDestroy() {},
+        }
+      `,
+      expected: `export default {
+  onBeforeUnmount() {}
+
+};`
+},
+{
+  name: `Rename destroyed to ${Hooks.OnUnmounted}`,
+  input: `
     export default {
-      beforeMount() {},
-      mounted() {},
-      beforeUpdate() {},
-      updated() {},
-      beforeDestroy() {},
-      destroyed: function() {},
+      destroyed() {},
+    }
+  `,
+  expected: `export default {
+  onUnmounted() {}
+
+};`
+},
+{
+  name: `Rename errorCaptured to ${Hooks.OnErrorCaptured}`,
+  input: `
+    export default {
       errorCaptured() {},
     }
-  `
-  const expected = `export default {
-  onBeforeMount() {},
-
-  onMounted() {},
-
-  onBeforeUpdate() {},
-
-  onUpdated() {},
-
-  onBeforeUnmount() {},
-
-  onUnmounted: function () {},
-
+  `,
+  expected: `export default {
   onErrorCaptured() {}
 
 };`
-  expect(transform(input)).toBe(expected);
+},
+  ]
+
+  tests.forEach(it => {
+    test(it.name, () => {
+      expect(transform(it.input)).toBe(it.expected);
+    })
+  })
+
 })
+
