@@ -6,6 +6,8 @@ A tool amids in migration from vue 2.x to 3.
 
 ### Migrating to Composition API
 
+#### setup
+
 ```javascript
 // before
 export defalut {
@@ -18,7 +20,7 @@ export defalut {
 }
 
 // after
-import { reactive } from '@vue';
+import { reactive } from 'vue';
 
 export defalut {
   setup() {
@@ -30,6 +32,20 @@ export defalut {
 }
 
 ```
+
+#### reactive
+
+#### computed
+
+#### watch
+
+#### Lifecycle Hooks
+
+#### provide & inject
+
+### TypeScript support
+
+#### defineCompondent
 
 
 
