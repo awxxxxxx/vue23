@@ -2,13 +2,18 @@ import traverse, { NodePath } from "@babel/traverse";
 import * as t from '@babel/types';
 import { File } from "@babel/types";
 
-import { resolveTopIdentifier, isDeprectedHook } from './utils'
-import { KeyWords, Vue23HooksMap } from "./symbol";
+import { resolveTopIdentifier } from './utils'
+import { KeyWords } from './symbol';
+import { convertHook,isLifecycleHook } from './lifecycle';
 
 const defaultImportOptions = {
   reactive: false,
   ref: false,
 }
+
+let dataNode: NodePath<t.ObjectMethod | t.ObjectProperty> | null = null;
+
+let lifecycleHooksPath: NodePath<t.ObjectMethod | t.ObjectProperty>[] = []
 
 type ImportOptions = typeof defaultImportOptions;
 
@@ -56,35 +61,36 @@ function importDependencies(path: NodePath<t.Program>, options: ImportOptions) {
 export function transformJS(ast: File) {
   let options = Object.assign({}, defaultImportOptions);
   traverse(ast, {
-    exit(path) {
-      if (path.isProgram()) {
+    Program: {
+      exit(path) {
         importDependencies(path, options);
         options = defaultImportOptions;
-      }
+        if (dataNode) {
+         // TODO put lifecycle in data
+        }
+      },
     },
     ObjectMethod(path) {
-      if (isDeprectedHook(path)) {
-        return path.remove();
-      }
-      if (Vue23HooksMap[path.node.key.name]) {
-        path.node.key.name = Vue23HooksMap[path.node.key.name]
+      if (isLifecycleHook(path.node.key.name)) {
+        convertHook(path);
+        // lifecycleHooksPath.push(path);
       }
     },
     ObjectProperty(path) {
-      if (isDeprectedHook(path)) {
-        return path.remove();
-      }
-      if (Vue23HooksMap[path.node.key.name] && t.isFunctionExpression(path.node.value)) {
-        path.node.key.name = Vue23HooksMap[path.node.key.name]
+      if (isLifecycleHook(path.node.key.name) && t.isFunctionExpression(path.node.value)) {
+        convertHook(path);
+        // lifecycleHooksPath.push(path);
       }
     },
     ReturnStatement(path) {
-      if (t.isObjectMethod(path.parentPath.parentPath.node)) {
-        const gp = path.parentPath.parentPath as NodePath<t.ObjectMethod>
+      const parent = path.getFunctionParent();
+      if (t.isObjectMethod(parent.node)) {
+        const gp = parent as NodePath<t.ObjectMethod>;
+        dataNode = gp;
         if (t.isIdentifier(gp.node.key, { name: KeyWords.Data})) {
           // rename 'data' to 'setup'
           gp.node.key.name = KeyWords.Setup;
-
+          dataNode = gp;
           if (t.isIdentifier(path.node.argument)) {
             const n = resolveTopIdentifier(path.node.argument.name, path)
             if (n?.isVariableDeclarator()) {
@@ -105,7 +111,7 @@ export function transformJS(ast: File) {
             }
             let re;
             if (t.isBlockStatement(path.parentPath.node)) {
-              path.scope.push({ id: nstateIdentifier, init: call, kind: 'const' })
+              gp.scope.push({ id: nstateIdentifier, init: call, kind: 'const' })
               re = t.returnStatement(nstateIdentifier);
             } else {
               re = t.returnStatement(call);

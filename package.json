@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "jest"
+    "test": "jest --verbose"
   },
   "repository": "git@github.com:awbear/vue23.git",
   "author": "awbear <13192872690@163.com>",
