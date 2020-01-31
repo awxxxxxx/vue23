@@ -1,55 +1,6 @@
-import * as parser from '@babel/parser';
-import generate from '@babel/generator';
+import { Hooks } from '../lib/transformers/lifecycle';
+import { transform } from './utils'
 
-import { transformJS } from '../lib/transformers/js';
-import { Hooks } from '../lib/transformers/symbol';
-
-function transform(input: string) {
-  const ast = parser.parse(input, { sourceType: 'module'})
-  transformJS(ast);
-  return generate(ast).code;
-}
-
-test('rename data method to setup', () => {
-  const input = `
-    export default {
-      data () {
-        return {};
-      }
-    }
-  `
-  const expected =`import { reactive } from "vue";
-export default {
-  setup() {
-    const state = reactive({});
-    return state;
-  }
-
-};`
-  expect(transform(input)).toBe(expected);
-})
-
-test('wrap with reactive', () => {
-  const input = `
-    export default {
-      data () {
-        const a = {};
-        const b = a;
-        return a;
-      }
-    }
-  `
-  const expected =`import { reactive } from "vue";
-export default {
-  setup() {
-    const a = reactive({});
-    const b = a;
-    return a;
-  }
-
-};`
-  expect(transform(input)).toBe(expected);
-})
 
 describe('Change lifecycle hooks', () => {
   const tests = [
@@ -72,7 +23,7 @@ describe('Change lifecycle hooks', () => {
       expected: `export default {};`
     },
     {
-      name: `Rename beforeMount to ${Hooks.OnBeforeMount}`,
+      name: `Rename beforeMount to ${Hooks.onBeforeMount}`,
       input: `
         export default {
           beforeMount() {},
@@ -84,7 +35,7 @@ describe('Change lifecycle hooks', () => {
 };`
     },
     {
-      name: `Rename mounted to ${Hooks.OnMounted}`,
+      name: `Rename mounted to ${Hooks.onMounted}`,
       input: `
         export default {
           mounted() {},
@@ -96,7 +47,7 @@ describe('Change lifecycle hooks', () => {
 };`
     },
     {
-      name: `Rename beforeUpdate to ${Hooks.OnBeforeUpdate}`,
+      name: `Rename beforeUpdate to ${Hooks.onBeforeUpdate}`,
       input: `
         export default {
           beforeUpdate() {},
@@ -108,7 +59,7 @@ describe('Change lifecycle hooks', () => {
 };`
     },
     {
-      name: `Rename updated to ${Hooks.OnUpdated}`,
+      name: `Rename updated to ${Hooks.onUpdated}`,
       input: `
         export default {
           updated() {},
@@ -120,7 +71,7 @@ describe('Change lifecycle hooks', () => {
 };`
     },
     {
-      name: `Rename beforeDestroy to ${Hooks.OnBeforeUnmount}`,
+      name: `Rename beforeDestroy to ${Hooks.onBeforeUnmount}`,
       input: `
         export default {
           beforeDestroy() {},
@@ -132,7 +83,7 @@ describe('Change lifecycle hooks', () => {
 };`
 },
 {
-  name: `Rename destroyed to ${Hooks.OnUnmounted}`,
+  name: `Rename destroyed to ${Hooks.onUnmounted}`,
   input: `
     export default {
       destroyed() {},
@@ -144,7 +95,7 @@ describe('Change lifecycle hooks', () => {
 };`
 },
 {
-  name: `Rename errorCaptured to ${Hooks.OnErrorCaptured}`,
+  name: `Rename errorCaptured to ${Hooks.onErrorCaptured}`,
   input: `
     export default {
       errorCaptured() {},
