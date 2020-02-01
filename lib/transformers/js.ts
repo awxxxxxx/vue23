@@ -2,18 +2,15 @@ import traverse, { NodePath } from "@babel/traverse";
 import * as t from '@babel/types';
 import { File } from "@babel/types";
 
-import { resolveTopIdentifier } from './utils'
+import { resolveTopIdentifier, findIndexOfReturnStatement } from './utils'
 import { KeyWords } from './symbol';
-import { convertHook,isLifecycleHook } from './lifecycle';
+import { convertHook,isLifecycleHook, generateSetupNode } from './lifecycle';
 
 const defaultImportOptions = {
   reactive: false,
   ref: false,
 }
 
-let dataNode: NodePath<t.ObjectMethod | t.ObjectProperty> | null = null;
-
-let lifecycleHooksPath: NodePath<t.ObjectMethod | t.ObjectProperty>[] = []
 
 type ImportOptions = typeof defaultImportOptions;
 
@@ -58,39 +55,59 @@ function importDependencies(path: NodePath<t.Program>, options: ImportOptions) {
   }
 }
 
+function insertStatements(ss: t.Statement[], exps: t.Statement[]) {
+  let index = findIndexOfReturnStatement(ss);
+  index = index > -1 ? index : ss.length - 1;
+  ss.splice(index, 0, ...exps);
+}
+
 export function transformJS(ast: File) {
   let options = Object.assign({}, defaultImportOptions);
+  let setupNode: NodePath<t.ObjectMethod | t.ObjectProperty> | null = null;
+  let lifecycleHooksPath: Array<{
+    exps: Array<t.ExpressionStatement | t.Statement>,
+    path: NodePath<t.ObjectMethod | t.ObjectProperty>
+  }> = [];
+
   traverse(ast, {
     Program: {
       exit(path) {
         importDependencies(path, options);
         options = defaultImportOptions;
-        if (dataNode) {
-         // TODO put lifecycle in data
+        if (lifecycleHooksPath.length) {
+          const node = setupNode ? setupNode.node : generateSetupNode(lifecycleHooksPath[0].path);
+          const exps = lifecycleHooksPath.reduce((previous, current) => {
+            return previous.concat(current.exps);
+          }, [] as t.Statement[]);
+          if (t.isObjectMethod(node)) {
+            insertStatements(node.body.body, exps)
+          } else if (t.isObjectProperty(node) && t.isFunctionExpression(node.value)) {
+            const value = node.value as t.FunctionExpression;
+            insertStatements(value.body.body, exps)
+          }
+          lifecycleHooksPath = []
         }
       },
     },
     ObjectMethod(path) {
       if (isLifecycleHook(path.node.key.name)) {
-        convertHook(path);
-        // lifecycleHooksPath.push(path);
+        lifecycleHooksPath.push({ exps: convertHook(path), path });
       }
     },
     ObjectProperty(path) {
       if (isLifecycleHook(path.node.key.name) && t.isFunctionExpression(path.node.value)) {
-        convertHook(path);
-        // lifecycleHooksPath.push(path);
+        lifecycleHooksPath.push({ exps: convertHook(path), path });
       }
     },
     ReturnStatement(path) {
       const parent = path.getFunctionParent();
       if (t.isObjectMethod(parent.node)) {
         const gp = parent as NodePath<t.ObjectMethod>;
-        dataNode = gp;
+        setupNode = gp;
         if (t.isIdentifier(gp.node.key, { name: KeyWords.Data})) {
           // rename 'data' to 'setup'
           gp.node.key.name = KeyWords.Setup;
-          dataNode = gp;
+          setupNode = gp;
           if (t.isIdentifier(path.node.argument)) {
             const n = resolveTopIdentifier(path.node.argument.name, path)
             if (n?.isVariableDeclarator()) {

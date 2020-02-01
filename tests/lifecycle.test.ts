@@ -8,10 +8,26 @@ describe('Change lifecycle hooks', () => {
       name: 'Remove beforeCreate',
       input: `
         export default {
-          beforeCreate() {},
+          beforeCreate() {
+            console.log('test');
+          },
+          data() {
+            const a = {};
+            const b = a;
+            return a;
+          },
         }
       `,
-      expected: `export default {};`
+      expected: `import { reactive } from "vue";
+export default {
+  setup() {
+    const a = reactive({});
+    const b = a;
+    console.log('test');
+    return a;
+  }
+
+};`
     },
     {
       name: 'Remove created',
@@ -20,7 +36,10 @@ describe('Change lifecycle hooks', () => {
           created() {},
         }
       `,
-      expected: `export default {};`
+      expected: `export default {
+  setup() {}
+
+};`
     },
     {
       name: `Rename beforeMount to ${Hooks.onBeforeMount}`,
@@ -30,7 +49,9 @@ describe('Change lifecycle hooks', () => {
         }
       `,
       expected: `export default {
-  onBeforeMount() {}
+  setup() {
+    onBeforeMount(() => {});
+  }
 
 };`
     },
@@ -42,7 +63,9 @@ describe('Change lifecycle hooks', () => {
         }
       `,
       expected: `export default {
-  onMounted() {}
+  setup() {
+    onMounted(() => {});
+  }
 
 };`
     },
@@ -54,7 +77,9 @@ describe('Change lifecycle hooks', () => {
         }
       `,
       expected: `export default {
-  onBeforeUpdate() {}
+  setup() {
+    onBeforeUpdate(() => {});
+  }
 
 };`
     },
@@ -66,7 +91,9 @@ describe('Change lifecycle hooks', () => {
         }
       `,
       expected: `export default {
-  onUpdated() {}
+  setup() {
+    onUpdated(() => {});
+  }
 
 };`
     },
@@ -78,7 +105,9 @@ describe('Change lifecycle hooks', () => {
         }
       `,
       expected: `export default {
-  onBeforeUnmount() {}
+  setup() {
+    onBeforeUnmount(() => {});
+  }
 
 };`
 },
@@ -90,7 +119,9 @@ describe('Change lifecycle hooks', () => {
     }
   `,
   expected: `export default {
-  onUnmounted() {}
+  setup() {
+    onUnmounted(() => {});
+  }
 
 };`
 },
@@ -102,7 +133,71 @@ describe('Change lifecycle hooks', () => {
     }
   `,
   expected: `export default {
-  onErrorCaptured() {}
+  setup() {
+    onErrorCaptured(() => {});
+  }
+
+};`
+},
+{
+  name: `Rename all`,
+  input: `
+    export default {
+      beforeCreate() {
+        console.log('beforeCreate');
+      },
+      created() {
+        console.log('created');
+      },
+      beforeMount: function() {
+        console.log('beforeMount');
+      },
+      mounted: function() {
+        console.log('mounted');
+      },
+      beforeUpdate() {
+        console.log('beforeUpdate');
+      },
+      updated() {
+        console.log('updated');
+      },
+      beforeDestroy() {
+        console.log('beforeDestroy');
+      },
+      destroyed() {
+        console.log('destroyed');
+      },
+      errorCaptured() {
+        console.log('errorCaptured');
+      },
+    }
+  `,
+  expected: `export default {
+  setup() {
+    console.log('beforeCreate');
+    console.log('created');
+    onBeforeMount(() => {
+      console.log('beforeMount');
+    });
+    onMounted(() => {
+      console.log('mounted');
+    });
+    onBeforeUpdate(() => {
+      console.log('beforeUpdate');
+    });
+    onUpdated(() => {
+      console.log('updated');
+    });
+    onBeforeUnmount(() => {
+      console.log('beforeDestroy');
+    });
+    onUnmounted(() => {
+      console.log('destroyed');
+    });
+    onErrorCaptured(() => {
+      console.log('errorCaptured');
+    });
+  }
 
 };`
 },
