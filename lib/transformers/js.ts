@@ -122,16 +122,20 @@ export function transformJS(ast: File) {
             options.reactive = true;
           } else if (path.node.argument) {
             const call = wrapWithReactive([path.node.argument])
-            const nstateIdentifier = t.identifier('state');
             if (path.scope.hasOwnBinding('state')) {
               path.scope.rename('state')
             }
             let re;
             if (t.isBlockStatement(path.parentPath.node)) {
+              const nstateIdentifier = t.identifier('state');
               gp.scope.push({ id: nstateIdentifier, init: call, kind: 'const' })
-              re = t.returnStatement(nstateIdentifier);
+              re = t.returnStatement(
+                t.objectExpression([t.objectProperty(nstateIdentifier, nstateIdentifier)])
+              );
             } else {
-              re = t.returnStatement(call);
+              re = t.returnStatement(
+                t.objectExpression([t.objectProperty(call, call)])
+              );
             }
             options.reactive = true;
             path.replaceWith(re);

@@ -20,22 +20,28 @@ export function hasReturnStatement(bs: t.Statement | null, depth: number, maxDep
   if (bs === null) {
     return false;
   }
+  if (t.isReturnStatement(bs)) {
+    return true;
+  }
+  if (t.isIfStatement(bs)) {
+    if (hasReturnStatement(bs.consequent, depth + 1, maxDepth) || hasReturnStatement(bs.alternate, depth + 1, maxDepth)) {
+      return true;
+    }
+  }
   if (t.isBlockStatement(bs)) {
-    bs.body.forEach(it => {
-      if (t.isReturnStatement(it)) {
+    for (let i = 0; i < bs.body.length; i++) {
+      const it = bs.body[i];
+      if (hasReturnStatement(it, depth + 1, maxDepth)) {
         return true;
       }
-      if (t.isIfStatement(it)) {
-        return hasReturnStatement(it.consequent, depth + 1) || hasReturnStatement(it.alternate, depth + 1)
-      }
-    })
+    }
   }
   return false;
 }
 
 export function findIndexOfReturnStatement(ss: t.Statement[]) {
   for (let i = 0; i < ss.length; i++) {
-    if (hasReturnStatement(ss[i], 1)) {
+    if (hasReturnStatement(ss[i], 1, 5)) {
       return i;
     }
   }

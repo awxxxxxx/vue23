@@ -144,7 +144,14 @@ export default {
   input: `
     export default {
       beforeCreate() {
+        var a = 1;
         console.log('beforeCreate');
+      },
+      data() {
+        if (a) {
+          return {};
+        }
+        return {};
       },
       created() {
         console.log('created');
@@ -172,8 +179,11 @@ export default {
       },
     }
   `,
-  expected: `export default {
+  expected: `import { reactive } from "vue";
+export default {
   setup() {
+    const state = reactive({});
+    var a = 1;
     console.log('beforeCreate');
     console.log('created');
     onBeforeMount(() => {
@@ -197,6 +207,14 @@ export default {
     onErrorCaptured(() => {
       console.log('errorCaptured');
     });
+
+    if (a) {
+      return {
+        state: state
+      };
+    }
+
+    return {};
   }
 
 };`

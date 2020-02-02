@@ -12,7 +12,9 @@ test('rename data method to setup', () => {
 export default {
   setup() {
     const state = reactive({});
-    return state;
+    return {
+      state: state
+    };
   }
 
 };`
