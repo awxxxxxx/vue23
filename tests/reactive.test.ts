@@ -1,5 +1,6 @@
 import { transform } from './utils'
 
+describe('Make reactive', () => {
 test('rename data method to setup', () => {
   const input = `
     export default {
@@ -41,4 +42,6 @@ export default {
 
 };`
   expect(transform(input)).toBe(expected);
+})
+
 })
