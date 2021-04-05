@@ -2,9 +2,9 @@ import traverse, { NodePath } from "@babel/traverse";
 import * as t from '@babel/types';
 import { File } from "@babel/types";
 
-import { resolveTopIdentifier, findIndexOfReturnStatement } from './utils'
-import { KeyWords } from './symbol';
-import { convertHook,isLifecycleHook, generateSetupNode } from './lifecycle';
+import { resolveTopIdentifier, findIndexOfReturnStatement } from '../utils'
+import { KeyWords } from '../symbol';
+import { convertHook,isLifecycleHook, generateSetupNode } from '../lifecycle';
 
 const defaultImportOptions = {
   reactive: false,
@@ -108,6 +108,8 @@ export function transformJS(ast: File) {
           // rename 'data' to 'setup'
           gp.node.key.name = KeyWords.Setup;
           setupNode = gp;
+          // @TODO extract to another function
+          // make varibale reactivity
           if (t.isIdentifier(path.node.argument)) {
             const n = resolveTopIdentifier(path.node.argument.name, path)
             if (n?.isVariableDeclarator()) {

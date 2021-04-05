@@ -28,7 +28,7 @@ test('wrap with reactive', () => {
       data () {
         const a = {};
         const b = a;
-        return a;
+        return b;
       }
     }
   `
@@ -37,7 +37,7 @@ export default {
   setup() {
     const a = reactive({});
     const b = a;
-    return a;
+    return b;
   }
 
 };`

@@ -24,10 +24,33 @@ import { reactive } from 'vue';
 
 export defalut {
   setup() {
-    return reactive({
+    const state = reactive({
       a: 1,
       b: 2,
     })
+    return {
+      state: state,
+    };
+  }
+}
+
+// before
+export defalut {
+  data() {
+    var a = {};
+    var b = a;
+    return b;
+  }
+}
+
+// after
+import { reactive } from 'vue';
+
+export defalut {
+  setup() {
+    var a = reative({});
+    var b = a;
+    return b;
   }
 }
 
